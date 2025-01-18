@@ -1,2 +1,27 @@
-# Nanop_DiffEq_ParameterFitting
-Implementación de regresiones no lineales para la estimación de parámetros únicos en modelos matemáticos derivados de ecuaciones diferenciales, con aplicaciones en nanopartículas
+# Configuración en MacOS y Linux
+
+Ejecute los siguientes comandos en el terminal:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+source setup.sh
+```
+
+# Configuración en Windows
+
+Ejecute los siguientes comandos en el terminal:
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+setup
+```
+
+# Ejecución de pruebas
+
+Ejecute el siguiente comando en el terminal:
+
+```bash
+pytest
+```
