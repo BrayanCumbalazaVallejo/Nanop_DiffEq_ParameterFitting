@@ -1,3 +1,4 @@
 pytest
-nltk
+pandas
+matplotlib
 ipykernel
