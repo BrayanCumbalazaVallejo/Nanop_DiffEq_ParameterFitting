@@ -1,4 +1,8 @@
 numpy
 pandas
+scipy
 matplotlib
 ipykernel
+os
+pickle
+scikit-learn

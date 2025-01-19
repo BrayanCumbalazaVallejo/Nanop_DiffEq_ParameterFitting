@@ -1,8 +1,0 @@
-Metadata-Version: 2.2
-Name: homework
-Version: 0.1
-Requires-Dist: pytest
-Requires-Dist: pandas
-Requires-Dist: matplotlib
-Requires-Dist: ipykernel
-Dynamic: requires-dist
