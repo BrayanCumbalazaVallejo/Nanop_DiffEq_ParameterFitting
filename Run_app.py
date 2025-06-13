@@ -90,6 +90,7 @@ with col2:
 # --- LÓGICA DE SIMULACIÓN Y ACTUALIZACIÓN ---
 Y_AXIS_RANGE = [0.0, 2.0]
 
+# --- Lógica para cuando la simulación NO está corriendo ---
 if not st.session_state.running:
     st.info("Presiona 'Iniciar Simulación Acelerada' para comenzar.")
     if not st.session_state.data.empty:
@@ -97,10 +98,12 @@ if not st.session_state.running:
         chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
         table_placeholder.dataframe(df_display.style.format("{:.4f}"), use_container_width=True)
 
+# --- Lógica para cuando la simulación SÍ está corriendo ---
 if st.session_state.running:
     st.sidebar.info("Simulación en curso...")
     
-    # CAMBIO CLAVE: Comprobar si el DataFrame no está vacío antes de intentar graficar
+    # <-- LA CORRECCIÓN CLAVE ESTÁ AQUÍ
+    # Solo intentamos mostrar la gráfica y la tabla si el DataFrame ya tiene datos.
     if not st.session_state.data.empty:
         df_display = st.session_state.data.set_index("Tiempo (min)")
         chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
@@ -109,6 +112,7 @@ if st.session_state.running:
     max_sim_time_minutes = 180
     max_sim_time_seconds = max_sim_time_minutes * 60
 
+    # Lógica del temporizador para añadir nuevos datos
     if time.time() - st.session_state.last_update > 1:
         if st.session_state.sim_time <= max_sim_time_seconds:
             time_min, new_abs = simulate_data_point(st.session_state.sim_time, model_4_prediction, params)
@@ -121,6 +125,7 @@ if st.session_state.running:
             st.session_state.running = False
             st.sidebar.success("Simulación completada.")
     
+    # Si la simulación debe continuar, forzamos un 'rerun' para mantener el ciclo vivo
     if st.session_state.running:
         time.sleep(0.2)
         st.rerun()
