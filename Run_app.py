@@ -24,7 +24,6 @@ st.set_page_config(
 
 # --- TÍTULO Y DESCRIPCIÓN ---
 st.title("⏱️ Prueba Acelerada: Monitoreo de Nanopartículas")
-# Se actualiza la descripción para que sea claro el modo de prueba
 st.markdown("Esta aplicación simula la formación de nanopartículas de forma acelerada. **Cada segundo real equivale a 1 minuto en la simulación**.")
 
 # --- CARGA DEL MODELO (CACHEADO) ---
@@ -100,22 +99,22 @@ if not st.session_state.running:
 
 if st.session_state.running:
     st.sidebar.info("Simulación en curso...")
+    
+    # CAMBIO CLAVE: Comprobar si el DataFrame no está vacío antes de intentar graficar
+    if not st.session_state.data.empty:
+        df_display = st.session_state.data.set_index("Tiempo (min)")
+        chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
+        table_placeholder.dataframe(df_display.style.format({"Absorbancia (u.a.)": "{:.4f}"}), use_container_width=True)
+
     max_sim_time_minutes = 180
     max_sim_time_seconds = max_sim_time_minutes * 60
 
-    df_display = st.session_state.data.set_index("Tiempo (min)")
-    chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
-    table_placeholder.dataframe(df_display.style.format({"Absorbancia (u.a.)": "{:.4f}"}), use_container_width=True)
-
-    # LÓGICA DE TIEMPO ACELERADO:
-    # 1. Comprueba si ha pasado 1 SEGUNDO REAL
     if time.time() - st.session_state.last_update > 1:
         if st.session_state.sim_time <= max_sim_time_seconds:
             time_min, new_abs = simulate_data_point(st.session_state.sim_time, model_4_prediction, params)
             new_row = pd.DataFrame([{"Tiempo (min)": time_min, "Absorbancia (u.a.)": new_abs}])
             st.session_state.data = pd.concat([st.session_state.data, new_row], ignore_index=True)
             
-            # 2. Avanza el tiempo de la simulación en 60 SEGUNDOS (1 MINUTO)
             st.session_state.sim_time += 60
             st.session_state.last_update = time.time()
         else:
