@@ -16,15 +16,16 @@ def model_4(t, c1, k, x1, y1):
 
 # --- CONFIGURACIÓN DE LA PÁGINA DE STREAMLIT ---
 st.set_page_config(
-    page_title="Monitoreo de Nanopartículas en Tiempo Real",
-    page_icon="⚗️",
+    page_title="Prueba Acelerada - Monitoreo de Nanopartículas",
+    page_icon="⏱️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # --- TÍTULO Y DESCRIPCIÓN ---
-st.title("⚗️ Monitoreo de Formación de Nanopartículas")
-st.markdown("Esta aplicación simula en tiempo real la formación de nanopartículas, añadiendo un nuevo punto de datos a la gráfica y a la tabla cada 5 segundos.")
+st.title("⏱️ Prueba Acelerada: Monitoreo de Nanopartículas")
+# CAMBIO: Descripción actualizada para reflejar la nueva escala de tiempo.
+st.markdown("Esta aplicación simula la formación de nanopartículas de forma acelerada. **Cada segundo real equivale a 1 minuto en la simulación**.")
 
 # --- CARGA DEL MODELO (CACHEADO) ---
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "files", "models", "model_4.pkl")
@@ -48,7 +49,7 @@ model, params = load_model(MODEL_PATH)
 def model_4_prediction(t_values, c1, k, x1, y1):
     return el * (x1 - y1 * np.real(lambertw(c1 * np.exp(-k * t_values))))
 
-def simulate_data_point(current_sim_time_seconds, model_func, model_params, noise_level=0.005): # Reducimos un poco el ruido
+def simulate_data_point(current_sim_time_seconds, model_func, model_params, noise_level=0.005):
     time_min = current_sim_time_seconds / 60.0
     predicted_absorbance = model_func(np.array([time_min]), *model_params)[0]
     noise = np.random.normal(0, noise_level * predicted_absorbance)
@@ -66,7 +67,7 @@ if 'last_update' not in st.session_state:
 
 # --- CONTROLES DE LA BARRA LATERAL ---
 st.sidebar.header("🕹️ Control de Simulación")
-if st.sidebar.button("▶️ Iniciar Simulación", type="primary"):
+if st.sidebar.button("▶️ Iniciar Simulación Acelerada", type="primary"):
     st.session_state.running = True
     st.session_state.data = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
     st.session_state.sim_time = 0
@@ -90,12 +91,10 @@ with col2:
     table_placeholder = st.empty()
 
 # --- LÓGICA DE SIMULACIÓN Y ACTUALIZACIÓN ---
-
-# CAMBIO DEFINITIVO: Ajuste del rango del eje Y basado en la gráfica de comparación.
-Y_AXIS_RANGE = [0.0, 2.0] 
+Y_AXIS_RANGE = [0.0, 2.0]
 
 if not st.session_state.running:
-    st.info("Presiona 'Iniciar Simulación' para comenzar.")
+    st.info("Presiona 'Iniciar Simulación Acelerada' para comenzar.")
     if not st.session_state.data.empty:
         df_display = st.session_state.data.set_index("Tiempo (min)")
         chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
@@ -110,17 +109,21 @@ if st.session_state.running:
     chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
     table_placeholder.dataframe(df_display.style.format({"Absorbancia (u.a.)": "{:.4f}"}), use_container_width=True)
 
-    if time.time() - st.session_state.last_update > 5:
+    # CAMBIO 1: Comprobar si ha pasado 1 segundo real.
+    if time.time() - st.session_state.last_update > 1:
         if st.session_state.sim_time <= max_sim_time_seconds:
             time_min, new_abs = simulate_data_point(st.session_state.sim_time, model_4_prediction, params)
             new_row = pd.DataFrame([{"Tiempo (min)": time_min, "Absorbancia (u.a.)": new_abs}])
             st.session_state.data = pd.concat([st.session_state.data, new_row], ignore_index=True)
-            st.session_state.sim_time += 5
+            
+            # CAMBIO 2: Avanzar el tiempo de la simulación en 60 segundos (1 minuto).
+            st.session_state.sim_time += 60
             st.session_state.last_update = time.time()
         else:
             st.session_state.running = False
             st.sidebar.success("Simulación completada.")
     
     if st.session_state.running:
-        time.sleep(1)
+        # CAMBIO 3: Pausa más corta para una respuesta más rápida.
+        time.sleep(0.2)
         st.rerun()
