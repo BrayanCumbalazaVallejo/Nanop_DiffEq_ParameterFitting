@@ -3,4 +3,4 @@ pandas
 numpy
 scipy
 scikit-learn
-matplotlib #Aunque no se usa directamente en Run_app.py, es una buena práctica incluirla si está en el notebook original.
+matplotlib
