@@ -82,16 +82,13 @@ if 'data' not in st.session_state:
     st.session_state.data = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
 if 'current_time' not in st.session_state:
     st.session_state.current_time = 0
-if 'last_table_update' not in st.session_state:
-    st.session_state.last_table_update = -5
 
 # Lógica de los botones
 if start_simulation:
     st.session_state.running = True
     st.session_state.data = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
     st.session_state.current_time = 0
-    st.session_state.last_table_update = -5
-    st.rerun() # Forzar la actualización para reflejar el estado 'running'
+    st.rerun()
 
 if stop_simulation:
     st.session_state.running = False
@@ -108,7 +105,6 @@ table_placeholder = st.empty()
 # Mostrar estado inicial o final
 if not st.session_state.running:
     st.info("Presiona 'Iniciar' para comenzar la simulación.")
-    # Mostrar datos finales si existen
     if not st.session_state.data.empty:
         final_df = st.session_state.data.set_index("Tiempo (min)")
         chart_placeholder.line_chart(final_df)
@@ -118,7 +114,11 @@ if not st.session_state.running:
 if st.session_state.running:
     st.sidebar.info("Simulación en curso...")
 
-    max_sim_time_seconds = 180 * 60  # 180 minutos en segundos
+    # --- PARÁMETROS DE SIMULACIÓN CORREGIDOS ---
+    # Duración máxima de 100 minutos
+    max_sim_time_seconds = 100 * 60
+    # Intervalo de registro de 5 segundos
+    time_step_seconds = 5
 
     while st.session_state.running and st.session_state.current_time <= max_sim_time_seconds:
         time_min, simulated_absorbance = simulate_data_point(
@@ -132,19 +132,19 @@ if st.session_state.running:
         st.session_state.data = pd.concat([st.session_state.data, new_row], ignore_index=True)
 
         # --- Actualización de la UI ---
-        # El gráfico se actualiza en cada paso para una visualización fluida
+        # El gráfico se actualiza en cada nuevo punto
         chart_placeholder.line_chart(st.session_state.data.set_index("Tiempo (min)"))
 
-        # La tabla se actualiza cada 5 segundos
-        if (st.session_state.current_time - st.session_state.last_table_update) >= 5:
-            # Mostramos los últimos 10 registros
-            table_placeholder.dataframe(
-                st.session_state.data.tail(10).set_index("Tiempo (min)").style.format({"Absorbancia (u.a.)": "{:.4f}"})
-            )
-            st.session_state.last_table_update = st.session_state.current_time
+        # La tabla se actualiza mostrando los últimos 10 registros
+        table_placeholder.dataframe(
+            st.session_state.data.tail(10).set_index("Tiempo (min)").style.format({"Absorbancia (u.a.)": "{:.4f}"})
+        )
 
-        st.session_state.current_time += 1
-        time.sleep(0.05) # Pausa para una simulación más fluida
+        # Avanzar el tiempo de la simulación en el intervalo definido
+        st.session_state.current_time += time_step_seconds
+        
+        # Pausa para una visualización más fluida
+        time.sleep(0.1)
 
     if st.session_state.current_time > max_sim_time_seconds:
         st.session_state.running = False
