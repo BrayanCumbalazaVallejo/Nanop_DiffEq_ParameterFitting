@@ -48,7 +48,7 @@ model, params = load_model(MODEL_PATH)
 def model_4_prediction(t_values, c1, k, x1, y1):
     return el * (x1 - y1 * np.real(lambertw(c1 * np.exp(-k * t_values))))
 
-def simulate_data_point(current_sim_time_seconds, model_func, model_params, noise_level=0.01):
+def simulate_data_point(current_sim_time_seconds, model_func, model_params, noise_level=0.005): # Reducimos un poco el ruido
     time_min = current_sim_time_seconds / 60.0
     predicted_absorbance = model_func(np.array([time_min]), *model_params)[0]
     noise = np.random.normal(0, noise_level * predicted_absorbance)
@@ -90,14 +90,14 @@ with col2:
     table_placeholder = st.empty()
 
 # --- LÓGICA DE SIMULACIÓN Y ACTUALIZACIÓN ---
-# Rango fijo para el eje Y
-Y_AXIS_RANGE = [0.0, 1.0]
+
+# CAMBIO DEFINITIVO: Ajuste del rango del eje Y basado en la gráfica de comparación.
+Y_AXIS_RANGE = [0.0, 2.0] 
 
 if not st.session_state.running:
     st.info("Presiona 'Iniciar Simulación' para comenzar.")
     if not st.session_state.data.empty:
         df_display = st.session_state.data.set_index("Tiempo (min)")
-        # CAMBIO CLAVE: Añadido el parámetro 'y'
         chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
         table_placeholder.dataframe(df_display.style.format("{:.4f}"), use_container_width=True)
 
@@ -107,7 +107,6 @@ if st.session_state.running:
     max_sim_time_seconds = max_sim_time_minutes * 60
 
     df_display = st.session_state.data.set_index("Tiempo (min)")
-    # CAMBIO CLAVE: Añadido el parámetro 'y'
     chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
     table_placeholder.dataframe(df_display.style.format({"Absorbancia (u.a.)": "{:.4f}"}), use_container_width=True)
 
