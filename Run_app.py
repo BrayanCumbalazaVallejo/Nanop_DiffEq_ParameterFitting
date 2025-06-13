@@ -54,18 +54,16 @@ model, params = load_model(MODEL_PATH)
 def model_4_prediction(t_values, c1, k, x1, y1):
     """
     Predice la absorbancia usando el modelo 4 con los parámetros dados.
-    Esta función es una réplica del modelo en tu notebook, asegurando que 'el' se use.
     """
+    # Asegúrate de que 'el' esté definido globalmente o pasado como argumento si es necesario.
+    # En este caso, ya está definido globalmente arriba.
     return el * (x1 - y1 * np.real(lambertw(c1 * np.exp(-k * t_values))))
 
-def simulate_data(current_time_point, total_data_points, model_func, model_params, noise_level=0.01):
+def simulate_data_point(current_time_seconds, model_func, model_params, noise_level=0.01):
     """
-    Simula un punto de datos basado en el modelo y añade ruido.
+    Simula un punto de datos basado en el modelo para un tiempo dado en segundos.
     """
-    if current_time_point >= total_data_points:
-        return None
-    
-    time_min = current_time_point * 5 / 60  # Asumiendo registros cada 5 segundos
+    time_min = current_time_seconds / 60.0
     predicted_absorbance = model_func(np.array([time_min]), *model_params)[0]
     
     # Añadir ruido gaussiano
@@ -83,17 +81,22 @@ stop_simulation = st.sidebar.button("⏹️ Detener Simulación")
 # Inicializar estado de la simulación usando st.session_state
 if 'running' not in st.session_state:
     st.session_state.running = False
-if 'data_frame' not in st.session_state:
-    st.session_state.data_frame = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
-if 'current_point_index' not in st.session_state:
-    st.session_state.current_point_index = 0
+if 'data_frame_all' not in st.session_state: # DataFrame para todos los puntos de la gráfica
+    st.session_state.data_frame_all = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
+if 'data_frame_table' not in st.session_state: # DataFrame para la tabla (cada 5 segundos)
+    st.session_state.data_frame_table = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
+if 'current_sim_time_seconds' not in st.session_state: # Tiempo actual de simulación en segundos
+    st.session_state.current_sim_time_seconds = 0
+if 'last_table_update_time' not in st.session_state: # Último tiempo en que se actualizó la tabla
+    st.session_state.last_table_update_time = -5 # Inicializar para que la primera actualización ocurra en t=0
 
 # Lógica para iniciar la simulación
 if start_simulation:
     st.session_state.running = True
-    # Resetear el DataFrame y el índice de puntos al iniciar una nueva simulación
-    st.session_state.data_frame = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
-    st.session_state.current_point_index = 0
+    st.session_state.data_frame_all = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
+    st.session_state.data_frame_table = pd.DataFrame(columns=["Tiempo (min)", "Absorbancia (u.a.)"])
+    st.session_state.current_sim_time_seconds = 0
+    st.session_state.last_table_update_time = -5 # Resetea para que la tabla se actualice en t=0
 
 # Lógica para detener la simulación
 if stop_simulation:
@@ -107,46 +110,50 @@ table_placeholder = st.empty()
 # Bucle de simulación en tiempo real
 if st.session_state.running:
     st.sidebar.info("Simulación en curso...")
+    
     # Tiempo máximo de simulación en minutos (según tu gráfica de model_4_comparison.png)
-    max_time_in_notebook = 180 
-    # Calcular el número total de puntos a simular (cada 5 segundos)
-    total_simulated_points = int(max_time_in_notebook * 60 / 5) 
+    max_time_in_notebook_mins = 180 
+    max_sim_time_seconds = max_time_in_notebook_mins * 60 # Convertir a segundos
 
-    while st.session_state.running and st.session_state.current_point_index <= total_simulated_points:
-        # Simular un nuevo punto de datos
-        time_min, simulated_absorbance = simulate_data(
-            st.session_state.current_point_index,
-            total_simulated_points,
+    while st.session_state.running and st.session_state.current_sim_time_seconds <= max_sim_time_seconds:
+        # Simular un nuevo punto de datos cada segundo (o el intervalo deseado)
+        time_min, simulated_absorbance = simulate_data_point(
+            st.session_state.current_sim_time_seconds,
             model_4_prediction,
             params
         )
 
-        if time_min is None:  # Si ya no hay más puntos para simular
-            st.session_state.running = False
-            st.sidebar.warning("Simulación completada. No hay más datos.")
-            break
-
-        # Añadir el nuevo punto al DataFrame en st.session_state
-        new_row = pd.DataFrame([{
+        # Añadir el nuevo punto al DataFrame para la gráfica
+        new_row_all = pd.DataFrame([{
             "Tiempo (min)": time_min,
             "Absorbancia (u.a.)": simulated_absorbance
         }])
-        st.session_state.data_frame = pd.concat([st.session_state.data_frame, new_row], ignore_index=True)
+        st.session_state.data_frame_all = pd.concat([st.session_state.data_frame_all, new_row_all], ignore_index=True)
 
-        # Actualizar gráfica en el placeholder
+        # Actualizar gráfica en el placeholder con todos los puntos
         with chart_placeholder:
-            st.line_chart(st.session_state.data_frame.set_index("Tiempo (min)"))
+            st.line_chart(st.session_state.data_frame_all.set_index("Tiempo (min)"))
 
-        # Actualizar tabla de registros (mostrar solo los últimos 10 para mejor visualización)
-        with table_placeholder:
-            st.subheader("Últimos Registros")
-            st.dataframe(st.session_state.data_frame.tail(10).style.format({"Absorbancia (u.a.)": "{:.4f}"}))
+        # Actualizar tabla de registros cada 5 segundos
+        if (st.session_state.current_sim_time_seconds - st.session_state.last_table_update_time) >= 5:
+            new_row_table = pd.DataFrame([{
+                "Tiempo (min)": time_min,
+                "Absorbancia (u.a.)": simulated_absorbance
+            }])
+            st.session_state.data_frame_table = pd.concat([st.session_state.data_frame_table, new_row_table], ignore_index=True)
+            
+            with table_placeholder:
+                st.subheader("Últimos Registros")
+                st.dataframe(st.session_state.data_frame_table.tail(10).style.format({"Absorbancia (u.a.)": "{:.4f}"}))
+            
+            st.session_state.last_table_update_time = st.session_state.current_sim_time_seconds
 
-        st.session_state.current_point_index += 1
-        time.sleep(0.5)  # Pequeña pausa para simular el paso del tiempo real
+        st.session_state.current_sim_time_seconds += 1 # Avanzar un segundo
+        time.sleep(0.1)  # Pausa corta para permitir la actualización de la UI. Ajusta este valor si es necesario.
+                         # Un valor menor hará que la simulación sea más rápida, pero podría afectar el renderizado de la UI.
 
     # Mensaje final si la simulación se completa (sin detenerla manualmente)
-    if st.session_state.current_point_index > total_simulated_points:
+    if st.session_state.current_sim_time_seconds > max_sim_time_seconds:
         st.session_state.running = False
         st.sidebar.success("Simulación terminada.")
 
@@ -154,7 +161,8 @@ if st.session_state.running:
 else:
     st.info("Presiona 'Iniciar Simulación' para comenzar a ver los datos en tiempo real.")
     # Si ya hay datos en la sesión (por una simulación anterior o al recargar), mostrarlos
-    if not st.session_state.data_frame.empty:
-        chart_placeholder.line_chart(st.session_state.data_frame.set_index("Tiempo (min)"))
+    if not st.session_state.data_frame_all.empty:
+        chart_placeholder.line_chart(st.session_state.data_frame_all.set_index("Tiempo (min)"))
+    if not st.session_state.data_frame_table.empty:
         table_placeholder.subheader("Últimos Registros")
-        table_placeholder.dataframe(st.session_state.data_frame.tail(10).style.format({"Absorbancia (u.a.)": "{:.4f}"}))
+        table_placeholder.dataframe(st.session_state.data_frame_table.tail(10).style.format({"Absorbancia (u.a.)": "{:.4f}"}))
