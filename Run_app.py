@@ -24,7 +24,7 @@ st.set_page_config(
 
 # --- TÍTULO Y DESCRIPCIÓN ---
 st.title("⏱️ Prueba Acelerada: Monitoreo de Nanopartículas")
-# CAMBIO: Descripción actualizada para reflejar la nueva escala de tiempo.
+# Se actualiza la descripción para que sea claro el modo de prueba
 st.markdown("Esta aplicación simula la formación de nanopartículas de forma acelerada. **Cada segundo real equivale a 1 minuto en la simulación**.")
 
 # --- CARGA DEL MODELO (CACHEADO) ---
@@ -81,11 +81,9 @@ if st.sidebar.button("⏹️ Detener Simulación"):
 
 # --- LAYOUT DE LA APLICACIÓN ---
 col1, col2 = st.columns([2, 1])
-
 with col1:
     st.subheader("📈 Gráfica en Tiempo Real")
     chart_placeholder = st.empty()
-
 with col2:
     st.subheader("📋 Tabla de Registros")
     table_placeholder = st.empty()
@@ -109,14 +107,15 @@ if st.session_state.running:
     chart_placeholder.line_chart(df_display, color="#ffca3a", y=Y_AXIS_RANGE, use_container_width=True)
     table_placeholder.dataframe(df_display.style.format({"Absorbancia (u.a.)": "{:.4f}"}), use_container_width=True)
 
-    # CAMBIO 1: Comprobar si ha pasado 1 segundo real.
+    # LÓGICA DE TIEMPO ACELERADO:
+    # 1. Comprueba si ha pasado 1 SEGUNDO REAL
     if time.time() - st.session_state.last_update > 1:
         if st.session_state.sim_time <= max_sim_time_seconds:
             time_min, new_abs = simulate_data_point(st.session_state.sim_time, model_4_prediction, params)
             new_row = pd.DataFrame([{"Tiempo (min)": time_min, "Absorbancia (u.a.)": new_abs}])
             st.session_state.data = pd.concat([st.session_state.data, new_row], ignore_index=True)
             
-            # CAMBIO 2: Avanzar el tiempo de la simulación en 60 segundos (1 minuto).
+            # 2. Avanza el tiempo de la simulación en 60 SEGUNDOS (1 MINUTO)
             st.session_state.sim_time += 60
             st.session_state.last_update = time.time()
         else:
@@ -124,6 +123,5 @@ if st.session_state.running:
             st.sidebar.success("Simulación completada.")
     
     if st.session_state.running:
-        # CAMBIO 3: Pausa más corta para una respuesta más rápida.
         time.sleep(0.2)
         st.rerun()
